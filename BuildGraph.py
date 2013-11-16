@@ -6,14 +6,15 @@ if __name__ == '__main__':
     # Some constants that determine what data to fetch
     start_date = 1383264000 # November 1, 2013
     end_date = 1383350400   # November 2, 2013
-    site = 'stackoverflow'
+    site_info = {site: 'stackoverflow',
+                 base_url: 'http://api.stackexhange.com',
+                 sleep_time: 35 # ms, since limited to 30 requests/s}
     tag_list = ['python']
 
-    graph = BuildGraph(graph, start_date, end_date, site, tags)
+    graph = BuildGraph(graph, start_date, end_date, site_info, tags)
 
 def BuildGraph(start_date, end_date,
-               site='stackoverflow', tags = [],
-               base_url='http://api.stackexhange.com',
+               site=_info = None, tags = [],
                start_page = 1,
                graph = None)
     """ Builds a graph from data from StackExchange with the specified
@@ -27,6 +28,11 @@ def BuildGraph(start_date, end_date,
         # Create a new graph
         graph = igraph.Graph(directed = True)
 
+    if not site_info:
+        site_info = {site: 'stackoverflow',
+                     base_url: 'http://api.stackexhange.com',
+                     sleep_time: 35 # ms, since limited to 30 requests/s}
+
     # Keep track of how we've grab from StackExchange
     # and if we've grabbed everything
     quota_remaining = 10000
@@ -34,11 +40,13 @@ def BuildGraph(start_date, end_date,
     page = start_page
 
     while quota_remaining > 0 and has_more:
-        # Just keep grabbing questions and looking at their answers
-        req = GetQuestionRequestString(page, start_date, end_date
-                                       tags, site)
-        url = base_url + req
+        # Grab a bunch of questions
+        url = GetQuestionRequestString(page, start_date, end_date
+                                       tags, site_info)
         r = requests.get(url)
+        time.sleep(site_info['sleep_time']) # for throttling
+
+        # process the questions and add to graph
         data = r.json()
         questions = data.get('items', []) # empty list if no questions returned
         for question in questions:
@@ -54,12 +62,14 @@ def BuildGraph(start_date, end_date,
     print "Graph summary:"
     igraph.summary(graph)
 
-def GetQuestionRequestString(page, fromdate, todate, tags, site):
-    """ Returns the StackExchange API request string for questions
+def GetQuestionRequestString(page, fromdate, todate, tags, site_info):
+    """ Returns the StackExchange API request URL for questions
         with the specified arguments """
-    req = "/2.1/questions?page=%i&fromdate=%i&todate=%i"%(page,
+
+    url = site_info['base_url']
+    url += "/2.1/questions?page=%i&fromdate=%i&todate=%i"%(page,
                                                           fromdate,
                                                           todate)
-    req += "order=desc&sort=activity&tagged=%s&site=%s"%(';'.join(tags),
-                                                         site)
-    return req
+    url += "order=desc&sort=activity&tagged=%s&site=%s"%(';'.join(tags),
+                                                         site_info['site'])
+    return url
