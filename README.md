@@ -3,9 +3,10 @@ StackExchangeGraph
 
 Introduction
 ------------
-This is a semi-recreational project to example the user graph of Stack Overflow
-based on questions/answers. Semi- because this is also done in conjunction with
-Lada Adamic's [Social Network Analysis course on Coursera](https://class.coursera.org/sna-003/class).
+This is a semi-recreational project to examine the tag graph of Stack Overflow
+based on tags that occur together. Semi- because this is also done in
+conjunction with Lada Adamic's
+[Social Network Analysis course on Coursera](https://class.coursera.org/sna-003/class).
 
 Getting More Quota
 ------------------
