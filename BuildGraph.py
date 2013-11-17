@@ -1,5 +1,5 @@
 import requests
-#import igraph
+import igraph
 import time
 import StackAppsConstants
 import cPickle as pickle
@@ -17,8 +17,7 @@ def BuildGraph(start_date, end_date,
 
     if not graph:
         # Create a new graph
-        #graph = igraph.Graph(directed = False)
-        pass
+        graph = igraph.Graph(directed = False)
 
     if not site_info:
         site_info = {'site': 'stackoverflow',
@@ -30,6 +29,7 @@ def BuildGraph(start_date, end_date,
     quota_remaining = 10000
     has_more = True
     page = start_page
+    count = 0
 
     while quota_remaining > 0 and has_more:
         # Grab a bunch of questions
@@ -47,6 +47,7 @@ def BuildGraph(start_date, end_date,
         questions = data.get('items', []) # empty list if no questions returned
         for question in questions:
             AddQuestionToGraph(question, graph)
+            count += 1
 
         # update for next iteration
         if quota_remaining > 0:
@@ -54,12 +55,15 @@ def BuildGraph(start_date, end_date,
         has_more = data['has_more']
         quota_remaining = data['quota_remaining']
 
-    print "Processed %i pages."%(page)
+    print "Processed %i pages and %i questions."%(page, count)
     if quota_remaining == 0:
-        print "   ... but ran out of quota."
+        print "   but ran out of quota."
+    else:
+        print "   (%i quota left)"%(quota_remaining)
     print "Graph summary:"
     igraph.summary(graph)
 
+    return graph
 
 def GetQuestionRequestString(page, fromdate, todate, tags, site_info):
     """ Returns the StackExchange API request URL for questions
@@ -84,16 +88,13 @@ def GetVertexList(tags, graph):
 
     # first lookup all the vertices in the graph
     # or create them if they don't exist yet
-    for tag in tag:
+    for tag in tags:
         tag = tag.lower()
         try:
-            vertex = graph.find(name=tag)
-        except ValueError:
-            graph.add_vertex(name=tag, count=0)
-            vertex = graph.find(name=tag)
-        # Keep track of how many times we see a tag
-        # so we can later filter out rare tags if needed
-        vertex['count'] += 1
+            vertex = graph.vs.find(name=tag)
+        except (ValueError, KeyError):
+            graph.add_vertex(name=tag)
+            vertex = graph.vs.find(name=tag)
         vertices.append(vertex)
 
     return vertices
@@ -113,10 +114,10 @@ def AddEdgesBetweenVertices(vertices, graph):
                 continue
             try:
                 e = graph.get_eid(v1, v2)
-            except ValueError:
+            except igraph._igraph.InternalError:
                 graph.add_edge(v1, v2, weight=0)
                 e = graph.get_eid(v1, v2)
-            e['weight'] += 1
+            graph.es['weight'][e] += 1
 
 
 def AddQuestionToGraph(question, graph):
@@ -131,7 +132,7 @@ def AddQuestionToGraph(question, graph):
 if __name__ == '__main__':
     # Some constants that determine what data to fetch
     start_date = 1383264000 # November 1, 2013
-    end_date =   start_date + 1*60
+    end_date =   start_date + 60*60
     tag_list = []
     site_info = {'site': 'stackoverflow',
                  'base_url': 'http://api.stackexchange.com',
@@ -140,5 +141,6 @@ if __name__ == '__main__':
 
     graph = BuildGraph(start_date, end_date, site_info, tag_list)
 
-    with out_file as open('graph.pkl'):
+    graph.write_gml('graph.gml')
+    with open('graph.pkl', 'w') as out_file:
         pickle.dump(graph, out_file)
