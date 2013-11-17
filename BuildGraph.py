@@ -18,6 +18,7 @@ def BuildGraph(start_date, end_date,
     if not graph:
         # Create a new graph
         graph = igraph.Graph(directed = False)
+    graph.es['weight'] = 1.0 # make the graph weighted
 
     if not site_info:
         site_info = {'site': 'stackoverflow',
@@ -89,7 +90,6 @@ def GetVertexList(tags, graph):
     # first lookup all the vertices in the graph
     # or create them if they don't exist yet
     for tag in tags:
-        tag = tag.lower()
         try:
             vertex = graph.vs.find(name=tag)
         except (ValueError, KeyError):
@@ -112,12 +112,7 @@ def AddEdgesBetweenVertices(vertices, graph):
                 # Shouldn't happen, but just in case, don't want
                 # to connect a vertex to itself
                 continue
-            try:
-                e = graph.get_eid(v1, v2)
-            except igraph._igraph.InternalError:
-                graph.add_edge(v1, v2, weight=0)
-                e = graph.get_eid(v1, v2)
-            graph.es['weight'][e] += 1
+            graph[v1, v2] += 1
 
 
 def AddQuestionToGraph(question, graph):
