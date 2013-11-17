@@ -107,6 +107,10 @@ def AddEdgesBetweenVertices(vertices, graph):
         for j in xrange(i+1, len(vertices)):
             v1 = vertices[i].index
             v2 = vertices[j].index
+            if v1 == v2:
+                # Shouldn't happen, but just in case, don't want
+                # to connect a vertex to itself
+                continue
             try:
                 e = graph.get_eid(v1, v2)
             except ValueError:
